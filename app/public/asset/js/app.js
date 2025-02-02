@@ -440,7 +440,7 @@ createApp({
           const Userdata = await response.json();
 
           if (response.status === 200) {
-            
+
             this.loggedUserData = Userdata;
 
             let url = `/api/auctions/?q=${this.loggedUserData.username}&flag=0`;
@@ -452,7 +452,7 @@ createApp({
 
               const data = await response.json();
 
-              if (response.status === 200) {               
+              if (response.status === 200) {
                 this.loggedUserActiveAuctions = data.upcoming;
                 this.loggedUserExpiredAuctions = data.expired;
                 this.resetError();
@@ -516,7 +516,7 @@ createApp({
               description: this.auctionData.description,
             }),
           });
-          
+
           const data = await response.json();
 
           if (response.ok) {
@@ -664,29 +664,6 @@ createApp({
         if (response.status === 200) {
           this.resetError();
           this.bidInfo = data.bidDate;
-
-          this.$nextTick(() => {
-            const popoverElements = document.querySelectorAll('.auction-bids');
-
-            popoverElements.forEach((el) => {
-
-              let popoverInstance = bootstrap.Popover.getInstance(el);
-              if (popoverInstance) {
-                try {
-                  popoverInstance.dispose();
-                } catch (error) {
-                  console.warn("Popover dispose error:", error);
-                }
-              }
-
-              new bootstrap.Popover(el, {
-                trigger: "hover focus",
-                placement: "top",
-              });
-            });
-          });
-
-
         } else if (response.status === 404) {
           this.error = data.message;
         } else {

@@ -5,15 +5,15 @@ const { connectToDatabase } = require("./db.js");
 const checkIfLogged = (req, res, next) => {
   if (req.session && req.session.user) {
     next();
-} else {
+  } else {
     res.status(401).json({ message: "Unauthorized" });
-}
+  }
 };
 
 const checkIfTheUserIsTheCreator = async (req, res, next) => {
   try {
-    const db = await connectToDatabase(); 
-    const id = req.params.id; 
+    const db = await connectToDatabase();
+    const id = req.params.id;
 
     if (!ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid ID format" });
@@ -40,8 +40,8 @@ const checkIfTheUserIsTheCreator = async (req, res, next) => {
 
 const checkIfUserCanMakeABid = async (req, res, next) => {
   try {
-    const db = await connectToDatabase(); 
-    const id = req.params.id; 
+    const db = await connectToDatabase();
+    const id = req.params.id;
 
     if (!ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid ID format" });

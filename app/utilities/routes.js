@@ -248,15 +248,15 @@ router.get("/auctions/:id", async (req, res) => {
         const hours = Math.floor(diff / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-        auctionWithTime =  {
+        auctionWithTime = {
             ...auction,
             timeRemaining: `${hours}h ${minutes}m`
-        };       
+        };
     } else {
-        auctionWithTime =  {
+        auctionWithTime = {
             ...auction,
             timeRemaining: "Auction expired"
-        };  
+        };
     }
 
 
