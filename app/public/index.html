@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="index" author="Federico Monti Bragadin" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Click&Bid</title>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Vue.js -->
+    <script src="/asset/js/app.js" defer></script>
+
+    <link rel="icon" type="image/x-icon" href="./asset/images/favicon.ico">
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+      crossorigin="anonymous"
+    />
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="./asset/css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <!-- Font Awesome -->
+  </head>
+
+  <body>
+    <header class="header">
+      <img src="./asset/images/logo.png" class="logo" alt="Click&Bid Logo" />
+    </header>
+    <main>
+      <div id="app">
+        <div class="tab-buttons">
+          <ul class="nav nav-tabs">
+            <li class="nav-item">
+              <button
+                class="nav-link tab-button active-tab-button"
+                @click="toggleTab(0); scrollToTab('tab1'); searchAuctions();"
+              >
+                Auctions
+              </button>
+            </li>
+            <li class="nav-item">
+              <button
+                class="nav-link tab-button"
+                @click="toggleTab(1); scrollToTab('tab2'); searchUser();"
+              >
+                Users
+              </button>
+            </li>
+            <li class="nav-item">
+              <button
+                class="nav-link tab-button"
+                data-bs-toggle="modal"
+                data-bs-target="#myUserModal"
+                @click="getLoggedUserInfo();"
+              >
+                <i class="fa-solid fa-user"></i>
+              </button>
+            </li>
+          </ul>
+        </div>
+        <section id="content">
+          <div class="tab" id="tab1">
+            <div id="top-container">
+              <div v-if="authenticated" class="create-container">
+                <button
+                  class="create-text"
+                  data-bs-toggle="modal"
+                  data-bs-target="#createAuctionModal"
+                >
+                  Create your auction
+                  <i
+                    class="fa-solid fa-pencil"
+                    style="color: rgba(37, 72, 96, 255)"
+                  ></i>
+                </button>
+              </div>
+              <div v-else class="create-container">
+                <button
+                  class="create-text"
+                  data-bs-toggle="modal"
+                  data-bs-target="#myUserModal"
+                >
+                  Create your auction
+                  <i
+                    class="fa-solid fa-pencil"
+                    style="color: rgba(37, 72, 96, 255)"
+                  ></i>
+                </button>
+              </div>
+              <div class="nav-auction">
+                <ul class="nav nav-auction">
+                  <li class="nav-item">
+                    <button
+                      class="nav-link tab-button"
+                      @click="isExpired = false"
+                      :class="{ 'active-tab-button': isExpired === false, active: isExpired === false }"
+                    >
+                      Active
+                    </button>
+                  </li>
+                  <li class="nav-item">
+                    <button
+                      class="nav-link tab-button"
+                      @click="isExpired = true"
+                      :class="{ 'active-tab-button': isExpired === true, active: isExpired === true }"
+                    >
+                      Expired
+                    </button>
+                  </li>
+                </ul>
+              </div>
+              <div class="search-container">
+                <input
+                  class="search"
+                  type="text"
+                  v-model="searchAuctionsQuery"
+                  @input="searchAuctions()"
+                  placeholder="Search for an auction..."
+                />
+              </div>
+            </div>
+
+            <div class="auctions-container">
+              <div
+                class="auction"
+                v-for="auct in filteredAuctions"
+                :key="auct._id"
+              >
+                <div
+                  class="card mb-3"
+                  style="
+                    width: 20rem;
+                    height: 300px;
+                    background: rgba(206, 242, 246, 255);
+                  "
+                  @click="openAuctionModal(auct._id);"
+                  data-bs-toggle="modal"
+                  data-bs-target="#auctionModal"
+                >
+                  <div
+                    class="card-header"
+                    style="color: rgba(37, 72, 96, 255); font-size: 25px"
+                  >
+                    {{auct.title}}
+                  </div>
+                  <div class="card-body" style="overflow: hidden">
+                    <p class="card-text">{{auct.timeRemaining}}</p>
+                    <p class="card-text description">{{auct.description}}</p>
+                  </div>
+                  <div
+                    class="card-footer"
+                    style="
+                      display: flex;
+                      flex-direction: row;
+                      justify-content: space-between;
+                    "
+                  >
+                    <div
+                      class="user-footer"
+                      data-bs-target="#showUserModal"
+                      data-bs-toggle="modal"
+                      @click="getUserInfo(auct.owner, null); "
+                    >
+                      {{auct.owner}}
+                    </div>
+                    <div>Current bid:{{auct.currentHigherBid}}€</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              class="modal fade"
+              id="createAuctionModal"
+              tabindex="-1"
+              aria-labelledby="createAuctionModalLabel"
+              aria-hidden="true"
+            >
+              <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="createAuctionModalLabel">
+                      Create your auction
+                    </h1>
+                    <button
+                      type="button"
+                      class="btn-close"
+                      data-bs-dismiss="modal"
+                      aria-label="Close"
+                      @click="resetAuctionData"
+                    ></button>
+                  </div>
+                  <div class="modal-body">
+                    <div class="container">
+                      <form id="auctionForm" @submit.prevent="submitNewAuction">
+                        <div class="form-group">
+                          <label for="title">Title</label>
+                          <input
+                            type="text"
+                            class="form-control"
+                            v-model="auctionData.title"
+                            id="title"
+                            placeholder="Enter title"
+                            required
+                          />
+                        </div>
+                        <div class="form-group">
+                          <label for="price">Price</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            v-model="auctionData.startingBid"
+                            class="form-control"
+                            id="price"
+                            placeholder="Enter price"
+                            required
+                          />
+                        </div>
+                        <div class="form-group">
+                          <label for="date">Date</label>
+                          <input
+                            type="datetime-local"
+                            class="form-control"
+                            v-model="auctionData.expiryDate"
+                            id="date"
+                            name="date"
+                            required
+                          />
+                        </div>
+                        <div class="form-group">
+                          <label for="description">Description</label>
+                          <textarea
+                            class="form-control"
+                            id="description"
+                            v-model="auctionData.description"
+                            rows="5"
+                            required
+                          ></textarea>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button
+                      type="submit"
+                      class="btn btn-primary"
+                      form="auctionForm"
+                    >
+                      Submit
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="tab" id="tab2">
+            <div class="search-container">
+              <input
+                class="search"
+                type="text"
+                v-model="searchUsersQuery"
+                @input="searchUser()"
+                placeholder="Search for an user..."
+              />
+            </div>
+            <div class="users-container">
+              <div class="users" v-for="usr in users" :key="usr._id">
+                <div
+                  class="card"
+                  style="border-width: 2px; border-color: #ccc"
+                  @click="getUserInfo(null,usr._id)"
+                  data-bs-toggle="modal"
+                  data-bs-target="#showUserModal"
+                  aria-label="View details for {{usr.username}}"
+                >
+                  <div class="card-body d-flex align-items-center">
+                    <!-- Foto profilo -->
+                    <img
+                      src="./asset/images/user.jpg"
+                      alt="Profile picture of {{usr.username}}"
+                      class="rounded-circle"
+                      width="50"
+                      height="50"
+                    />
+
+                    <!-- Contenuto testo -->
+                    <div class="ms-3">
+                      <h5 class="card-title">{{usr.username}}</h5>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="modal"
+            id="myUserModal"
+            tabindex="-1"
+            aria-labelledby="myUserModalLabel"
+            aria-hidden="true"
+          >
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"
+                  ></button>
+                </div>
+                <div class="modal-body">
+                  <section v-if="authenticated">
+                    <div class="user-profile">
+                      <div class="user-info">
+                        <h2>{{ loggedUserData.username }}</h2>
+                        <p>
+                          {{ loggedUserData.name }} {{ loggedUserData.surname }}
+                        </p>
+                      </div>
+
+                      <div class="user-auctions-container">
+                        <div v-if="loggedUserActiveAuctions.length > 0">
+                          <h3 class="section-title">Active Auctions</h3>
+                          <div class="auction-list">
+                            <div
+                              class="auction-card"
+                              v-for="usrAuct in loggedUserActiveAuctions"
+                              :key="usrAuct._id"
+                            >
+                              <div class="auction-info">
+                                <h4>{{ usrAuct.title }}</h4>
+                              </div>
+                              <div class="auction-actions">
+                                <button
+                                  class="nav-link tab-button"
+                                  @click="deleteAuction(usrAuct._id)"
+                                >
+                                  <i class="fa-solid fa-trash"></i>
+                                </button>
+                                <button
+                                  class="nav-link tab-button"
+                                  @click="showEditAuction(usrAuct._id)"
+                                  data-bs-toggle="modal"
+                                  data-bs-target="#editAuctionModal"
+                                >
+                                  <i class="fa-solid fa-pencil"></i>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div v-if="loggedUserExpiredAuctions.length > 0">
+                          <h3 class="section-title">Expired Auctions</h3>
+                          <div class="auction-list">
+                            <div
+                              class="auction-card expired"
+                              v-for="usrAuct in loggedUserExpiredAuctions"
+                              :key="usrAuct._id"
+                            >
+                              <div class="auction-info">
+                                <h4>{{ usrAuct.title }}</h4>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div
+                          v-if="loggedUserActiveAuctions.length === 0 && loggedUserExpiredAuctions.length === 0"
+                        >
+                          <p class="no-auctions">
+                            Sorry, this user has not posted any auctions.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                  <section v-else id="isNotAuthenticated">
+                    <p>
+                      Hold on! You need to
+                      <span class="highlight">sing in</span> first
+                    </p>
+                    <button
+                      type="button"
+                      class="btn btn-primary btn-lg"
+                      data-bs-toggle="modal"
+                      data-bs-target="#logInModal"
+                    >
+                      Sing In
+                    </button>
+                    <p>or if you’re new here</p>
+                    <button
+                      type="button"
+                      class="btn btn-success btn-lg"
+                      data-bs-toggle="modal"
+                      data-bs-target="#singUpModal"
+                    >
+                      Sing Up
+                    </button>
+                    <p>
+                      <span class="highlight">sign up</span> and join the fun!
+                    </p>
+                  </section>
+                </div>
+                <div class="modal-footer"></div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="modal fade"
+            id="auctionModal"
+            tabindex="-1"
+            aria-labelledby="auctionModalLabel"
+            aria-hidden="true"
+          >
+            <div class="modal-dialog modal-xl modal-dialog-centered">
+              <div class="modal-content auction-modal">
+                <div class="modal-header">
+                  <h1 class="modal-title fs-5" id="auctionTitleModalLabel">
+                    {{ auction.title }}
+                  </h1>
+                  <button
+                    v-if="isFromAuction"
+                    type="button"
+                    class="btn-close"
+                    data-bs-target="#showUserModal"
+                    data-bs-toggle="modal"
+                    aria-label="Close"
+                    @click="setIsFromAuction(false)"
+                  ></button>
+                  <button
+                    v-else
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"
+                  ></button>
+                </div>
+                <div class="modal-body">
+                  <div class="container-fluid">
+                    <div class="row">
+                      <div class="col-12 col-lg-7 details-container mb-3">
+                        <p class="description">{{ auction.description }}</p>
+                        <p v-if="auction.timeRemaining !== 'Auction expired'">
+                          Auction will expire in: {{ auction.timeRemaining }}
+                        </p>
+                        <p v-else>
+                          This auction has expired,
+                          <span v-if="auctionBids.length > 0">
+                            the winner is {{ auctionBids[auctionBids.length -
+                            1].bidderUser }}. He paid {{
+                            auctionBids[auctionBids.length - 1].bidValue }} €
+                          </span>
+                          <span v-else> but there were no bids. </span>
+                        </p>
+                        <div class="info-container">
+                          <p
+                            class="username"
+                            data-bs-target="#showUserModal"
+                            data-bs-toggle="modal"
+                            @click="getUserInfo(auction.owner, null); setIsFromAuction(true);"
+                          >
+                            Creator: {{ auction.owner }}
+                          </p>
+                          <p class="starting-bid">
+                            Starting Bid: {{ auction.startingBid }} €
+                          </p>
+                          <p class="current-bid">
+                            Current Higher Bid: {{ auction.currentHigherBid }} €
+                          </p>
+                        </div>
+                      </div>
+                      <div class="col-12 col-lg-5 bids-container mb-3">
+                        <div
+                          class="auction-bids mb-2"
+                          v-for="bid in auctionBids"
+                          :key="bid._id"
+                          v-show="true"
+                          data-bs-toggle="popover"
+                          data-bs-trigger="hover focus"
+                          data-bs-placement="top"
+                          :data-bs-content="bidInfo !== '' ? `Bid made in ${bidInfo}` : 'Loading...'"
+                          @mouseenter="getBidInfo(bid._id)"
+                          style="cursor: pointer; padding: 10px; border: 1px solid transparent;"
+                        >
+                          <p
+                            class="username mb-0"
+                            data-bs-target="#showUserModal"
+                            data-bs-toggle="modal"
+                            @click="getUserInfo(bid.bidderUser, null); setIsFromAuction(true);"
+                          >
+                            {{ bid.bidderUser }}
+                          </p>
+                          <p class="mb-0">{{ bid.bidValue }} €</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer flex-column">
+                  <div
+                    v-if="error !== ''"
+                    class="form-error-message w-100 text-center mb-2"
+                  >
+                    {{ error }}
+                  </div>
+                  <div
+                    v-if="auction.timeRemaining !== 'Auction expired'"
+                    class="bidContainer w-100 d-flex flex-column flex-md-row justify-content-center align-items-center gap-3"
+                  >
+                    <form
+                      id="makeABid"
+                      @submit.prevent="makeABid(auction._id)"
+                      class="w-100"
+                    >
+                      <div class="form-group">
+                        <input
+                          type="number"
+                          step="0.01"
+                          :min="auction.currentHigherBid"
+                          v-model="userBid"
+                          class="form-control"
+                          id="bid"
+                          placeholder="Enter price"
+                          required
+                        />
+                      </div>
+                    </form>
+                    <button
+
+                      type="submit"
+                      class="btn btn-primary"
+                      form="makeABid"
+                    >
+                      Make a bid
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div
+          class="modal fade"
+          id="logInModal"
+          tabindex="-1"
+          aria-labelledby="logInModalLabel"
+          aria-hidden="true"
+        >
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Sing In</h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"
+                ></button>
+              </div>
+              <div class="modal-body">
+                <div class="form-wrapper">
+                  <form id="loginForm" @submit.prevent="singIn">
+                    <input
+                      class="form-input"
+                      v-model="username"
+                      type="text"
+                      id="loginText"
+                      name="username"
+                      placeholder="Enter your username"
+                      required
+                    />
+
+                    <input
+                      class="form-input"
+                      v-model="password"
+                      type="password"
+                      id="loginPassword"
+                      name="password"
+                      placeholder="Enter your password"
+                      required
+                    />
+
+                    <div v-if="error !== ''" class="form-error-message">
+                      {{error}}
+                    </div>
+
+                    <button class="btn btn-primary form-button" type="submit">
+                      Login
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div
+          class="modal fade"
+          id="singUpModal"
+          tabindex="-1"
+          aria-labelledby="singUpModalLabel"
+          aria-hidden="true"
+        >
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Sing up</h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"
+                ></button>
+              </div>
+              <div class="modal-body">
+                <div class="form-wrapper">
+                  <form id="registerForm" @submit.prevent="signUp">
+                    <input
+                      class="form-input"
+                      v-model="username"
+                      type="text"
+                      id="registerUsername"
+                      name="username"
+                      placeholder="Enter your username"
+                      required
+                    />
+
+                    <input
+                      class="form-input"
+                      v-model="name"
+                      type="text"
+                      id="registerName"
+                      name="name"
+                      placeholder="Enter your name"
+                      required
+                    />
+
+                    <input
+                      class="form-input"
+                      v-model="surname"
+                      type="text"
+                      id="registerSurname"
+                      name="surname"
+                      placeholder="Enter your surname"
+                      required
+                    />
+
+                    <input
+                      class="form-input"
+                      v-model="password"
+                      type="password"
+                      id="registerPassword"
+                      name="password"
+                      placeholder="Enter a password"
+                      required
+                    />
+
+                    <input
+                      class="form-input"
+                      v-model="repeatPassword"
+                      type="password"
+                      id="repeatPassword"
+                      name="repeatPassword"
+                      placeholder="Confirm your password"
+                      required
+                    />
+
+                    <div v-if="error !== ''" class="form-error-message">
+                      {{error}}
+                    </div>
+
+                    <button class="btn btn-success form-button" type="submit">
+                      Sing Up
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="modal fade"
+          id="editAuctionModal"
+          tabindex="-1"
+          aria-labelledby="editAuctionModalLabel"
+          aria-hidden="true"
+        >
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h1 class="modal-title fs-5" id="modifyModalLabel">
+                  Edit your auction
+                </h1>
+                <button
+                  type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"
+                  @click="resetAuctionData"
+                ></button>
+              </div>
+              <div class="modal-body">
+                <div class="container">
+                  <form
+                    id="editAuctionForm"
+                    @submit.prevent="submitEditedAuction"
+                  >
+                    <div class="form-group">
+                      <label for="title">Title</label>
+                      <input
+                        type="text"
+                        class="form-control"
+                        v-model="auctionData.title"
+                        id="editTitle"
+                        placeholder="Enter title"
+                        required
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label for="price">Price</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        v-model="auctionData.startingBid"
+                        class="form-control"
+                        id="editPrice"
+                        placeholder="Enter price"
+                        disabled
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label for="date">Date</label>
+                      <input
+                        type="text"
+                        class="form-control"
+                        v-model="auctionData.expiryDate"
+                        id="editDate"
+                        name="date"
+                        disabled
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label for="description">Description</label>
+                      <textarea
+                        class="form-control"
+                        id="editDescription"
+                        v-model="auctionData.description"
+                        rows="5"
+                        required
+                      ></textarea>
+                    </div>
+                  </form>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  form="editAuctionForm"
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="modal fade"
+          id="showUserModal"
+          tabindex="-1"
+          aria-labelledby="showUserModalLabel"
+          aria-hidden="true"
+        >
+          <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h1 class="modal-title fs-5" id="usernameModalLabel">
+                  {{userInfo.username}}
+                </h1>
+                <button
+                  v-if="isFromAuction"
+                  type="button"
+                  class="btn-close"
+                  data-bs-target="#auctionModal"
+                  data-bs-toggle="modal"
+                  aria-label="Close"
+                  @click="setIsFromAuction(false)"
+                ></button>
+                <button
+                  v-else
+                  type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"
+                ></button>
+              </div>
+              <div class="modal-body">
+                <div class="user-profile">
+                  <div class="user-info">
+                    <p>{{ userInfo.name }} {{ userInfo.surname }}</p>
+                  </div>
+
+                  <div class="user-auctions-container">
+                    <div v-if="userActiveAuctions.length > 0">
+                      <h3 class="section-title">Active Auctions</h3>
+                      <div class="auction-list">
+                        <div
+                          class="auction-card"
+                          v-for="usrAuct in userActiveAuctions"
+                          :key="usrAuct._id"
+                        >
+                          <div class="auction-info">
+                            <h4
+                              @click="openAuctionModal(usrAuct._id); setIsFromAuction(true);"
+                              data-bs-toggle="modal"
+                              data-bs-target="#auctionModal"
+                            >
+                              {{ usrAuct.title }}
+                            </h4>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div v-if="userExpiredAuctions.length > 0">
+                    <h3 class="section-title">Expired Auctions</h3>
+                    <div class="auction-list">
+                      <div
+                        class="auction-card expired"
+                        v-for="usrAuct in userExpiredAuctions"
+                        :key="usrAuct._id"
+                      >
+                        <div class="auction-info">
+                          <h4
+                            @click="openAuctionModal(usrAuct._id); setIsFromAuction(true);"
+                            data-bs-toggle="modal"
+                            data-bs-target="#auctionModal"
+                          >
+                            {{ usrAuct.title }}
+                          </h4>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    v-if="userActiveAuctions.length === 0 && userExpiredAuctions.length === 0"
+                  >
+                    <p class="no-auctions">
+                      Sorry, this user has not posted any auctions.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+      integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js"
+      integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy"
+      crossorigin="anonymous"
+    ></script>
+    <script>
+      const now = new Date().toISOString().slice(0, 16);
+
+      document.getElementById("date").min = now;
+
+      const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+      const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
+    </script>
+  </body>
+</html>
